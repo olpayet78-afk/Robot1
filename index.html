@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Robot AvaTrade Pro</title>
+    <title>Robot AvaTrade Pro v3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; touch-action: manipulation; }
@@ -12,28 +12,31 @@
         .btn-auth { background: #1f2937; width: 100%; padding: 15px; border-radius: 12px; font-weight: 900; }
         .on { background: #dc2626 !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-        canvas { background: #050505; border: 1px solid #111827; width: 100%; height: 180px; border-radius: 8px; }
-        .log-display { background: rgba(30, 58, 138, 0.4); border-left: 4px solid #3b82f6; padding: 8px; font-size: 10px; color: #93c5fd; min-height: 40px; margin-bottom: 10px; border-radius: 0 4px 4px 0; }
+        canvas { background: #050505; border: 1px solid #111827; width: 100%; height: 160px; border-radius: 8px; }
+        .log-display { background: rgba(30, 58, 138, 0.4); border-left: 4px solid #3b82f6; padding: 8px; font-size: 10px; color: #93c5fd; min-height: 45px; margin-bottom: 10px; }
+        /* ALERTES ACHAT/VENTE */
+        #flash-alert { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:100; padding:30px; border-radius:20px; text-align:center; font-weight:900; font-size:40px; width:80%; box-shadow: 0 0 50px rgba(255,255,255,0.5); }
     </style>
 </head>
 <body class="p-4">
 
-    <div class="flex justify-between text-[9px] text-blue-500 mb-2 font-bold uppercase tracking-widest">
+    <div id="flash-alert"></div>
+
+    <div class="flex justify-between text-[9px] text-blue-500 mb-2 font-bold uppercase">
         <span>Compte: 101660280</span>
         <span id="status-text">Automate: OFF</span>
     </div>
 
-    <div id="decision-log" class="log-display">
-        Système prêt. En attente d'activation du Robot...
-    </div>
+    <div id="decision-log" class="log-display">Système prêt. Analyse technique active.</div>
 
     <button onclick="toggleBot()" id="main-btn" class="btn-auth mb-4">ACTIVER LE ROBOT</button>
 
     <div class="text-center mb-4">
         <div id="price" class="text-5xl font-black tracking-tighter text-gray-500">1.08500</div>
-        <div class="flex justify-center gap-4 mt-1">
-            <span id="rsi" class="text-[10px] text-blue-400 font-bold uppercase">RSI (14): --</span>
-            <span class="text-[10px] text-orange-400 font-bold uppercase">Pivot: 1.0842</span>
+        <div class="flex justify-around mt-2">
+            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">RSI</span><span id="rsi" class="text-xs text-blue-400 font-bold">--</span></div>
+            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">ADX</span><span id="adx" class="text-xs text-orange-400 font-bold">25</span></div>
+            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">Pivot</span><span class="text-xs text-white font-bold">1.0842</span></div>
         </div>
     </div>
 
@@ -54,23 +57,33 @@
         const canvas = document.getElementById('graph');
         const ctx = canvas.getContext('2d');
 
-        function logDecision(msg) {
-            document.getElementById('decision-log').innerText = msg;
+        function logDecision(msg) { document.getElementById('decision-log').innerText = msg; }
+
+        function triggerAlert(type) {
+            const el = document.getElementById('flash-alert');
+            el.style.display = 'block';
+            if(type === 'BUY') {
+                el.innerText = 'ACHAT (BUY)';
+                el.style.background = '#16a34a';
+                speak("Signal Crabe ! Achat immédiat " + currentLot);
+            } else {
+                el.innerText = 'VENTE (SELL)';
+                el.style.background = '#dc2626';
+                speak("Signal Crabe ! Vente immédiate " + currentLot);
+            }
+            setTimeout(() => { el.style.display = 'none'; }, 3000);
         }
 
         function toggleBot() {
             isActive = !isActive;
             const btn = document.getElementById('main-btn');
-            const status = document.getElementById('status-text');
             if(isActive) {
                 btn.innerText = "ARRÊTER LE ROBOT"; btn.classList.add('on');
-                status.innerText = "Automate: EN SERVICE";
-                logDecision("ROBOT ACTIVÉ : Analyse Bulle d'eau + Signal Crabe en cours...");
+                logDecision("ROBOT ACTIVÉ : Surveillance Bulle d'eau + Signal Crabe.");
                 speak("Robot en service.");
             } else {
                 btn.innerText = "ACTIVER LE ROBOT"; btn.classList.remove('on');
-                status.innerText = "Automate: OFF";
-                logDecision("ROBOT ARRÊTÉ : En attente de nouveaux ordres.");
+                logDecision("ROBOT ARRÊTÉ.");
                 speak("Robot arrêté.");
             }
         }
@@ -79,8 +92,7 @@
             currentLot = val;
             document.querySelectorAll('.btn-lot').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
-            logDecision("VOLUME RÉGLÉ : " + val + " lot pour les prochaines alertes.");
-            speak("Volume réglé à " + val);
+            speak("Lot " + val);
         }
 
         function speak(t) {
@@ -93,17 +105,18 @@
             const el = document.getElementById('price');
             const oldP = parseFloat(el.innerText);
             const newP = oldP + (Math.random() - 0.5) * 0.0002;
-            
             el.innerText = newP.toFixed(5);
             el.style.color = newP >= oldP ? "#22c55e" : "#ef4444";
             
-            let rsiVal = (35 + Math.random()*30).toFixed(2);
-            document.getElementById('rsi').innerText = "RSI (14): " + rsiVal;
+            let rsiVal = (30 + Math.random()*40).toFixed(2);
+            document.getElementById('rsi').innerText = rsiVal;
+            document.getElementById('adx').innerText = (20 + Math.random()*15).toFixed(0);
 
-            // Logique de démonstration des alertes de trading
-            if(isActive && Math.random() > 0.98) {
-                logDecision("SIGNAL : Confirmation Bulle d'eau détectée sur niveau Pivot.");
-                speak("Signal Bulle d'eau détecté");
+            // Simulation détection Signal Crabe
+            if(isActive && Math.random() > 0.99) {
+                const side = Math.random() > 0.5 ? 'BUY' : 'SELL';
+                logDecision("CRABE DÉTECTÉ : Confirmation Bulle d'eau sur R1.");
+                triggerAlert(side);
             }
 
             prices.push(newP);
@@ -113,12 +126,13 @@
 
         function drawGraph() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            // Niveaux techniques
-            ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(0, 50); ctx.lineTo(canvas.width, 50); ctx.stroke(); // R1
-            ctx.beginPath(); ctx.moveTo(0, 130); ctx.lineTo(canvas.width, 130); ctx.stroke(); // Pivot
+            // Grille Bollinger simplifiée
+            ctx.strokeStyle = "#111827"; ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(canvas.width, 30); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 130); ctx.lineTo(canvas.width, 130); ctx.stroke();
+            ctx.setLineDash([]);
 
-            // Courbe du prix
+            // Prix
             ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 3;
             ctx.beginPath();
             prices.forEach((p, i) => {
