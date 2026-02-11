@@ -3,45 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Robot AvaTrade Pro Final</title>
+    <title>Terminal Trading Pro v4.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; touch-action: manipulation; }
         .btn-lot { background: #111827; border: 1px solid #374151; padding: 12px 5px; border-radius: 8px; font-weight: bold; font-size: 11px; }
         .active { background: #1d4ed8 !important; border-color: #60a5fa !important; box-shadow: 0 0 15px rgba(59,130,246,0.5); }
-        .btn-auth { background: #1f2937; width: 100%; padding: 15px; border-radius: 12px; font-weight: 900; }
+        .btn-auth { background: #1f2937; width: 100%; padding: 15px; border-radius: 12px; font-weight: 900; letter-spacing: 1px; }
         .on { background: #dc2626 !important; animation: pulse 2s infinite; }
-        .btn-panic { background: #f97316; color: #000; width: 100%; padding: 12px; border-radius: 8px; font-weight: 900; font-size: 14px; margin-top: 10px; }
+        .btn-panic { background: #f97316; color: #000; width: 100%; padding: 12px; border-radius: 8px; font-weight: 900; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-        canvas { background: #050505; border: 1px solid #111827; width: 100%; height: 150px; border-radius: 8px; }
-        .log-display { background: rgba(30, 58, 138, 0.4); border-left: 4px solid #3b82f6; padding: 8px; font-size: 10px; color: #93c5fd; min-height: 45px; margin-bottom: 10px; }
-        #flash-alert { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:100; padding:30px; border-radius:20px; text-align:center; font-weight:900; font-size:40px; width:80%; }
-        /* Journal de Pêche */
-        #journal { background: #0a0a0a; border: 1px solid #1e293b; border-radius: 8px; margin-top: 15px; max-height: 250px; overflow-y: auto; font-size: 10px; }
-        .journal-day { background: #1e3a8a; padding: 4px 10px; font-weight: bold; color: #fff; position: sticky; top: 0; }
-        .journal-item { padding: 8px; border-bottom: 1px solid #111827; display: flex; justify-content: space-between; }
+        canvas { background: #050505; border: 1px solid #111827; width: 100%; height: 160px; border-radius: 8px; }
+        .log-display { background: rgba(30, 58, 138, 0.4); border-left: 4px solid #3b82f6; padding: 8px; font-size: 10px; color: #93c5fd; min-height: 45px; margin-bottom: 10px; border-radius: 0 4px 4px 0; }
+        #config-panel { display:none; background: #000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; padding: 20px; overflow-y: auto; }
+        input { background: #111827; border: 1px solid #3b82f6; color: #fff; padding: 12px; width: 100%; margin-bottom: 10px; border-radius: 8px; font-weight: bold; }
+        #flash-alert { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:300; padding:40px; border-radius:20px; text-align:center; font-weight:900; font-size:50px; width:85%; border: 4px solid white; box-shadow: 0 0 100px rgba(0,0,0,0.9); }
+        .journal-item { padding: 10px; border-bottom: 1px solid #111827; display: flex; justify-content: space-between; align-items: center; }
+        .journal-day { background: #1e3a8a; padding: 5px 10px; font-size: 10px; font-weight: bold; text-transform: uppercase; position: sticky; top: 0; }
     </style>
 </head>
 <body class="p-4">
 
     <div id="flash-alert"></div>
 
-    <div class="flex justify-between text-[9px] text-blue-500 mb-2 font-bold uppercase">
-        <span>Compte: 101660280</span>
-        <span id="status-text">Automate: OFF</span>
+    <div id="config-panel">
+        <h2 class="text-blue-400 font-bold mb-6 text-xl uppercase tracking-widest">Réglages Niveaux</h2>
+        <div class="space-y-4">
+            <div><label class="text-[10px] text-gray-400 uppercase">Haut Année (HA)</label><input type="number" step="0.00001" id="inp-ha" value="1.10500"></div>
+            <div><label class="text-[10px] text-gray-400 uppercase">Résistance 2 (R2)</label><input type="number" step="0.00001" id="inp-r2" value="1.09800"></div>
+            <div><label class="text-[10px] text-gray-400 uppercase">Résistance 1 (R1)</label><input type="number" step="0.00001" id="inp-r1" value="1.09200"></div>
+            <div><label class="text-[10px] text-gray-400 uppercase">Pivot Central</label><input type="number" step="0.00001" id="inp-pivot" value="1.08500"></div>
+        </div>
+        <button onclick="saveConfig()" class="bg-blue-600 w-full p-5 rounded-xl font-black mt-8">ENREGISTRER STRATÉGIE</button>
     </div>
 
-    <div id="decision-log" class="log-display">Système prêt. Analyse technique active.</div>
+    <div class="flex justify-between items-center mb-2">
+        <span class="text-[9px] text-blue-500 font-bold uppercase tracking-widest">Compte: 101660280</span>
+        <button onclick="document.getElementById('config-panel').style.display='block'; speak('Paramètres');" class="text-[10px] bg-gray-900 border border-gray-700 px-3 py-1 rounded-full uppercase">⚙️ Niveaux</button>
+    </div>
 
-    <button onclick="toggleBot()" id="main-btn" class="btn-auth">ACTIVER LE ROBOT</button>
-    <button onclick="panic()" class="btn-panic">BOUTON PANIC : CLOSE ALL</button>
+    <div id="decision-log" class="log-display">Système de surveillance actif. Scan des zones de liquidité...</div>
+
+    <div class="space-y-2">
+        <button onclick="toggleBot()" id="main-btn" class="btn-auth">ACTIVER LE ROBOT</button>
+        <button onclick="panic()" class="btn-panic">PANIC : LIQUIDATION TOTALE</button>
+    </div>
 
     <div class="text-center my-4">
-        <div id="price" class="text-5xl font-black tracking-tighter text-gray-500">1.08500</div>
-        <div class="flex justify-around mt-2">
-            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">RSI</span><span id="rsi" class="text-xs text-blue-400 font-bold">--</span></div>
-            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">ADX</span><span id="adx" class="text-xs text-orange-400 font-bold">25</span></div>
-            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">Pivot</span><span class="text-xs text-white font-bold">1.0842</span></div>
+        <div id="price" class="text-6xl font-black tracking-tighter text-gray-500">1.08500</div>
+        <div class="flex justify-around mt-3 border-y border-gray-900 py-2">
+            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">RSI (14)</span><span id="rsi" class="text-sm text-blue-400 font-bold">--</span></div>
+            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">ADX</span><span id="adx" class="text-sm text-orange-400 font-bold">--</span></div>
+            <div class="text-center"><span class="block text-[8px] text-gray-500 uppercase">Dist. R1</span><span id="dist-target" class="text-sm text-white font-bold">--</span></div>
         </div>
     </div>
 
@@ -55,72 +68,31 @@
 
     <canvas id="graph"></canvas>
 
-    <div id="journal-container">
-        <div class="text-[10px] text-blue-400 font-bold uppercase mt-4 mb-1">Journal de Pêche (Historique 7j)</div>
-        <div id="journal"></div>
+    <div class="mt-4">
+        <div class="text-[10px] text-blue-400 font-bold uppercase mb-1 tracking-widest flex justify-between">
+            <span>Journal de Trading</span>
+            <span class="text-gray-600">Historique 7J</span>
+        </div>
+        <div id="journal" class="bg-[#050505] border border-gray-900 rounded-lg max-h-60 overflow-y-auto"></div>
     </div>
 
     <script>
         let isActive = false;
         let prices = [];
         let currentLot = 0.01;
+        let levels = { ha: 1.105, r2: 1.098, r1: 1.092, pivot: 1.085 };
         let tradeHistory = JSON.parse(localStorage.getItem('tradeHistory') || '[]');
-        const canvas = document.getElementById('graph');
-        const ctx = canvas.getContext('2d');
 
         function logDecision(msg) { document.getElementById('decision-log').innerText = msg; }
 
-        function panic() {
-            isActive = false;
-            document.getElementById('main-btn').innerText = "ACTIVER LE ROBOT";
-            document.getElementById('main-btn').classList.remove('on');
-            logDecision("PANIC : Fermeture immédiate de toutes les positions.");
-            speak("Alerte Panic ! Toutes les positions sont coupées.");
-            triggerAlert('PANIC');
-        }
-
-        function triggerAlert(type) {
-            const el = document.getElementById('flash-alert');
-            el.style.display = 'block';
-            if(type === 'BUY') { el.innerText = 'ACHAT'; el.style.background = '#16a34a'; }
-            else if(type === 'SELL') { el.innerText = 'VENTE'; el.style.background = '#dc2626'; }
-            else { el.innerText = 'PANIC'; el.style.background = '#f97316'; }
-            setTimeout(() => { el.style.display = 'none'; }, 2000);
-        }
-
-        function addTradeToJournal(type, price) {
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-            const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-            
-            tradeHistory.push({ date: dateStr, time: timeStr, type: type, price: price, lot: currentLot, timestamp: now.getTime() });
-            
-            // Nettoyage : Garder seulement 7 jours
-            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-            tradeHistory = tradeHistory.filter(t => t.timestamp > sevenDaysAgo);
-            
-            localStorage.setItem('tradeHistory', JSON.stringify(tradeHistory));
-            renderJournal();
-        }
-
-        function renderJournal() {
-            const container = document.getElementById('journal');
-            container.innerHTML = "";
-            let currentDay = "";
-            
-            [...tradeHistory].reverse().forEach(t => {
-                if (t.date !== currentDay) {
-                    currentDay = t.date;
-                    const dayHead = document.createElement('div');
-                    dayHead.className = "journal-day";
-                    dayHead.innerText = currentDay;
-                    container.appendChild(dayHead);
-                }
-                const item = document.createElement('div');
-                item.className = "journal-item";
-                item.innerHTML = `<span>${t.time} - <b>${t.type}</b></span> <span>Lot: ${t.lot} @ ${t.price.toFixed(5)}</span>`;
-                container.appendChild(item);
-            });
+        function saveConfig() {
+            levels.ha = parseFloat(document.getElementById('inp-ha').value);
+            levels.r2 = parseFloat(document.getElementById('inp-r2').value);
+            levels.r1 = parseFloat(document.getElementById('inp-r1').value);
+            levels.pivot = parseFloat(document.getElementById('inp-pivot').value);
+            document.getElementById('config-panel').style.display = 'none';
+            logDecision("STRATÉGIE MISE À JOUR.");
+            speak("Niveaux mis à jour.");
         }
 
         function toggleBot() {
@@ -128,20 +100,68 @@
             const btn = document.getElementById('main-btn');
             if(isActive) {
                 btn.innerText = "ARRÊTER LE ROBOT"; btn.classList.add('on');
-                logDecision("ROBOT ACTIVÉ : Surveillance Bulle d'eau + Signal Crabe.");
+                logDecision("SURVEILLANCE ACTIVE : Bulle d'eau + Signal Crabe.");
                 speak("Robot en service.");
             } else {
                 btn.innerText = "ACTIVER LE ROBOT"; btn.classList.remove('on');
-                logDecision("ROBOT ARRÊTÉ.");
+                logDecision("MODE VEILLE.");
                 speak("Robot arrêté.");
             }
         }
 
-        function setLot(val, el) {
-            currentLot = val;
+        function panic() {
+            isActive = false;
+            document.getElementById('main-btn').innerText = "ACTIVER LE ROBOT";
+            document.getElementById('main-btn').classList.remove('on');
+            logDecision("ALERTE PANIC : Liquidation immédiate.");
+            speak("Liquidation totale.");
+            triggerAlert('PANIC');
+        }
+
+        function triggerAlert(type) {
+            const el = document.getElementById('flash-alert');
+            el.style.display = 'block';
+            if(type === 'BUY') { el.innerText = 'BUY'; el.style.background = '#16a34a'; }
+            else if(type === 'SELL') { el.innerText = 'SELL'; el.style.background = '#dc2626'; }
+            else { el.innerText = 'PANIC'; el.style.background = '#f97316'; }
+            setTimeout(() => { el.style.display = 'none'; }, 2000);
+        }
+
+        function addTrade(type, price) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+            const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            tradeHistory.push({ date: dateStr, time: timeStr, type: type, price: price, lot: currentLot, timestamp: now.getTime() });
+            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            tradeHistory = tradeHistory.filter(t => t.timestamp > sevenDaysAgo);
+            localStorage.setItem('tradeHistory', JSON.stringify(tradeHistory));
+            renderJournal();
+        }
+
+        function renderJournal() {
+            const container = document.getElementById('journal');
+            container.innerHTML = "";
+            let lastDay = "";
+            [...tradeHistory].reverse().forEach(t => {
+                if (t.date !== lastDay) {
+                    lastDay = t.date;
+                    const dayDiv = document.createElement('div');
+                    dayDiv.className = "journal-day";
+                    dayDiv.innerText = lastDay;
+                    container.appendChild(dayDiv);
+                }
+                const item = document.createElement('div');
+                item.className = "journal-item";
+                item.innerHTML = `<span>${t.time} - <b class="${t.type==='BUY'?'text-green-500':'text-red-500'}">${t.type}</b></span> <span>V: ${t.lot} @ ${t.price.toFixed(5)}</span>`;
+                container.appendChild(item);
+            });
+        }
+
+        function setLot(v, el) {
+            currentLot = v;
             document.querySelectorAll('.btn-lot').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
-            speak("Lot " + val);
+            speak("Volume " + v);
         }
 
         function speak(t) {
@@ -153,37 +173,48 @@
         function update() {
             const el = document.getElementById('price');
             const oldP = parseFloat(el.innerText);
-            const newP = oldP + (Math.random() - 0.5) * 0.0002;
+            const newP = oldP + (Math.random() - 0.5) * 0.00012;
             el.innerText = newP.toFixed(5);
             el.style.color = newP >= oldP ? "#22c55e" : "#ef4444";
             
-            document.getElementById('rsi').innerText = (30 + Math.random()*40).toFixed(2);
-            document.getElementById('adx').innerText = (20 + Math.random()*15).toFixed(0);
+            const rsiVal = (25 + Math.random()*50).toFixed(2);
+            document.getElementById('rsi').innerText = rsiVal;
+            document.getElementById('adx').innerText = (18 + Math.random()*15).toFixed(0);
+            document.getElementById('dist-target').innerText = (Math.abs(newP - levels.r1) * 10000).toFixed(1) + " pips";
 
-            if(isActive && Math.random() > 0.992) {
-                const side = Math.random() > 0.5 ? 'BUY' : 'SELL';
-                logDecision(`SIGNAL CRABE : Confirmation Bulle d'eau sur ${side}.`);
-                triggerAlert(side);
-                speak(`Signal Crabe ! ${side === 'BUY' ? 'Achat' : 'Vente'} lot ${currentLot}`);
-                addTradeToJournal(side, newP);
+            if(isActive) {
+                // Détection Bulle d'eau
+                if(Math.abs(newP - levels.r1) < 0.0001 && !window.nearR1) {
+                    logDecision("BULLE D'EAU : Zone R1 touchée.");
+                    speak("Bulle d'eau sur Résistance 1");
+                    window.nearR1 = true; setTimeout(() => window.nearR1 = false, 30000);
+                }
+                // Signal Crabe
+                if(newP >= levels.r1 && rsiVal > 68 && Math.random() > 0.99) {
+                    logDecision("SIGNAL CRABE : Saturation confirmée.");
+                    triggerAlert('SELL');
+                    speak("Signal Crabe ! Vente");
+                    addTrade('SELL', newP);
+                }
             }
 
             prices.push(newP);
             if(prices.length > 60) prices.shift();
-            drawGraph();
+            draw();
         }
 
-        function drawGraph() {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
+        function draw() {
+            const ctx = document.getElementById('graph').getContext('2d');
+            ctx.clearRect(0,0,300,160);
             ctx.strokeStyle = "#111827"; ctx.setLineDash([5, 5]);
-            ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(canvas.width, 30); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, 120); ctx.lineTo(canvas.width, 120); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 40); ctx.lineTo(300, 40); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 120); ctx.lineTo(300, 120); ctx.stroke();
             ctx.setLineDash([]);
             ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 3;
             ctx.beginPath();
             prices.forEach((p, i) => {
-                const x = (i / 60) * canvas.width;
-                const y = canvas.height/2 + (p - prices[0]) * 10000;
+                const x = (i / 60) * 300;
+                const y = 80 + (p - prices[0]) * 15000;
                 if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
             });
             ctx.stroke();
