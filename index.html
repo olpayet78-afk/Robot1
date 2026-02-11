@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Robot AvaTrade Pro v2</title>
+    <title>Robot AvaTrade Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; touch-action: manipulation; }
@@ -12,28 +12,28 @@
         .btn-auth { background: #1f2937; width: 100%; padding: 15px; border-radius: 12px; font-weight: 900; }
         .on { background: #dc2626 !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-        canvas { background: #050505; border: 1px solid #111827; width: 100%; height: 160px; border-radius: 8px; }
-        .log-display { background: rgba(30, 58, 138, 0.4); border-left: 4px solid #3b82f6; padding: 8px; font-size: 10px; color: #93c5fd; min-height: 35px; margin-bottom: 10px; }
+        canvas { background: #050505; border: 1px solid #111827; width: 100%; height: 180px; border-radius: 8px; }
+        .log-display { background: rgba(30, 58, 138, 0.4); border-left: 4px solid #3b82f6; padding: 8px; font-size: 10px; color: #93c5fd; min-height: 40px; margin-bottom: 10px; border-radius: 0 4px 4px 0; }
     </style>
 </head>
 <body class="p-4">
 
-    <div class="flex justify-between text-[9px] text-blue-500 mb-2 font-bold uppercase tracking-tighter">
+    <div class="flex justify-between text-[9px] text-blue-500 mb-2 font-bold uppercase tracking-widest">
         <span>Compte: 101660280</span>
         <span id="status-text">Automate: OFF</span>
     </div>
 
     <div id="decision-log" class="log-display">
-        Système prêt. En attente d'autorisation ou de signal...
+        Système prêt. En attente d'activation du Robot...
     </div>
 
-    <button onclick="toggleBot()" id="main-btn" class="btn-auth mb-4">ACTIVER LE SNIPER</button>
+    <button onclick="toggleBot()" id="main-btn" class="btn-auth mb-4">ACTIVER LE ROBOT</button>
 
     <div class="text-center mb-4">
         <div id="price" class="text-5xl font-black tracking-tighter text-gray-500">1.08500</div>
         <div class="flex justify-center gap-4 mt-1">
-            <span id="rsi" class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">RSI (14): --</span>
-            <span class="text-[10px] text-orange-400 font-bold uppercase tracking-widest">Pivot: 1.0842</span>
+            <span id="rsi" class="text-[10px] text-blue-400 font-bold uppercase">RSI (14): --</span>
+            <span class="text-[10px] text-orange-400 font-bold uppercase">Pivot: 1.0842</span>
         </div>
     </div>
 
@@ -63,14 +63,14 @@
             const btn = document.getElementById('main-btn');
             const status = document.getElementById('status-text');
             if(isActive) {
-                btn.innerText = "DÉSACTIVER SNIPER"; btn.classList.add('on');
+                btn.innerText = "ARRÊTER LE ROBOT"; btn.classList.add('on');
                 status.innerText = "Automate: EN SERVICE";
-                logDecision("SNIPER ACTIVÉ : Analyse des flux en cours pour détection Bulle d'eau...");
-                speak("Robot en service. Sniper prêt.");
+                logDecision("ROBOT ACTIVÉ : Analyse Bulle d'eau + Signal Crabe en cours...");
+                speak("Robot en service.");
             } else {
-                btn.innerText = "ACTIVER LE SNIPER"; btn.classList.remove('on');
+                btn.innerText = "ACTIVER LE ROBOT"; btn.classList.remove('on');
                 status.innerText = "Automate: OFF";
-                logDecision("SNIPER ARRÊTÉ : Toutes les positions sont protégées.");
+                logDecision("ROBOT ARRÊTÉ : En attente de nouveaux ordres.");
                 speak("Robot arrêté.");
             }
         }
@@ -79,7 +79,7 @@
             currentLot = val;
             document.querySelectorAll('.btn-lot').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
-            logDecision("VOLUME MODIFIÉ : " + val + " lot(s) pour la prochaine exécution.");
+            logDecision("VOLUME RÉGLÉ : " + val + " lot pour les prochaines alertes.");
             speak("Volume réglé à " + val);
         }
 
@@ -100,10 +100,10 @@
             let rsiVal = (35 + Math.random()*30).toFixed(2);
             document.getElementById('rsi').innerText = "RSI (14): " + rsiVal;
 
-            // Détection fictive de signal pour test visuel
+            // Logique de démonstration des alertes de trading
             if(isActive && Math.random() > 0.98) {
-                logDecision("SIGNAL DÉTECTÉ : Confirmation Bulle d'eau + Signal Crabe sur Pivot.");
-                speak("Confirmation Bulle d'eau détectée");
+                logDecision("SIGNAL : Confirmation Bulle d'eau détectée sur niveau Pivot.");
+                speak("Signal Bulle d'eau détecté");
             }
 
             prices.push(newP);
@@ -113,12 +113,12 @@
 
         function drawGraph() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            // Lignes de niveaux (R1, Pivot)
+            // Niveaux techniques
             ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(0, 40); ctx.lineTo(canvas.width, 40); ctx.stroke(); // R1 approx
-            ctx.beginPath(); ctx.moveTo(0, 120); ctx.lineTo(canvas.width, 120); ctx.stroke(); // Pivot approx
+            ctx.beginPath(); ctx.moveTo(0, 50); ctx.lineTo(canvas.width, 50); ctx.stroke(); // R1
+            ctx.beginPath(); ctx.moveTo(0, 130); ctx.lineTo(canvas.width, 130); ctx.stroke(); // Pivot
 
-            // Ligne de prix
+            // Courbe du prix
             ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 3;
             ctx.beginPath();
             prices.forEach((p, i) => {
