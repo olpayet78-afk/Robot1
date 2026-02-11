@@ -2,107 +2,68 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Robot AvaTrade Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
-        .price-up { color: #00ff00; }
-        .price-down { color: #ff0000; }
-        .preset-active { border: 2px solid #3b82f6; background: #1e3a8a !important; }
-        .trading-on { background: #ef4444 !important; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        #chart-container { width: 100%; height: 200px; background: #000; border: 1px solid #1e293b; margin-top: 10px; }
+        body { background-color: #000; color: #fff; font-family: monospace; }
+        .btn-lot { background: #1e293b; border: 1px solid #334155; padding: 15px 5px; border-radius: 8px; font-weight: bold; font-size: 12px; }
+        .active { background: #1e40af !important; border-color: #3b82f6 !important; box-shadow: 0 0 10px #3b82f6; }
+        .btn-auth { background: #374151; width: 100%; padding: 20px; border-radius: 12px; font-weight: 900; margin-bottom: 20px; }
+        .on { background: #b91c1c !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        #canvas-graph { background: #0a0a0a; border: 1px solid #1e293b; width: 100%; height: 150px; border-radius: 8px; }
     </style>
 </head>
-<body class="bg-black text-white font-mono overflow-hidden">
+<body class="p-4">
 
-    <div class="p-3 bg-gray-900 border-b-2 border-blue-900 flex justify-between items-center">
-        <div id="auth-label" class="text-xs font-bold text-gray-500 uppercase">Automate: OFF</div>
-        <button onclick="toggleTrading()" id="auth-btn" class="bg-gray-700 px-4 py-2 rounded-full font-black text-[10px]">AUTORISER LE TRADING</button>
+    <div class="flex justify-between text-[10px] text-blue-400 mb-4 uppercase font-bold">
+        <span>Compte 101660280</span>
+        <span id="status-text">Automate: OFF</span>
     </div>
 
-    <div class="py-4 text-center">
-        <div class="text-[9px] text-gray-500 uppercase">EUR/USD Live Market</div>
-        <div id="live-price" class="text-5xl font-bold tracking-tighter">1.08500</div>
-        <div id="rsi-display" class="text-[10px] text-blue-400 mt-1 uppercase">RSI (14): calcul...</div>
+    <button onclick="toggleBot()" id="main-btn" class="btn-auth">ACTIVER LE ROBOT</button>
+
+    <div class="text-center mb-6">
+        <div id="price" class="text-6xl font-black tracking-tighter mb-1 text-gray-400">0.00000</div>
+        <div id="rsi" class="text-xs text-blue-500 font-bold uppercase">RSI (14): calcul...</div>
     </div>
 
-    <div class="px-2 grid grid-cols-5 gap-1 mb-4">
-        <button onclick="selectLot(1, 0.01)" id="l1" class="bg-gray-800 py-3 rounded text-[10px] font-bold border border-gray-700">0.01</button>
-        <button onclick="selectLot(2, 0.05)" id="l2" class="bg-gray-800 py-3 rounded text-[10px] font-bold border border-gray-700">0.05</button>
-        <button onclick="selectLot(3, 0.10)" id="l3" class="bg-gray-800 py-3 rounded text-[10px] font-bold border border-gray-700">0.10</button>
-        <button onclick="selectLot(4, 0.25)" id="l4" class="bg-gray-800 py-3 rounded text-[10px] font-bold border border-gray-700">0.25</button>
-        <button onclick="selectLot(5, 0.50)" id="l5" class="bg-gray-800 py-3 rounded text-[10px] font-bold border border-gray-700">0.50</button>
+    <div class="grid grid-cols-5 gap-2 mb-6">
+        <button onclick="setLot(0.01, this)" class="btn-lot active">0.01</button>
+        <button onclick="setLot(0.05, this)" class="btn-lot">0.05</button>
+        <button onclick="setLot(0.10, this)" class="btn-lot">0.10</button>
+        <button onclick="setLot(0.25, this)" class="btn-lot">0.25</button>
+        <button onclick="setLot(0.50, this)" class="btn-lot">0.50</button>
     </div>
 
-    <div class="grid grid-cols-2 gap-2 px-2">
-        <div id="ind-liquidite" class="bg-gray-900 p-3 rounded border border-gray-800 text-center">
-            <div class="text-[10px] text-blue-500 font-bold uppercase">Liquidité</div>
-        </div>
-        <div id="ind-retournement" class="bg-gray-900 p-3 rounded border border-gray-800 text-center">
-            <div class="text-[10px] text-red-500 font-bold uppercase">Retournement</div>
-        </div>
-    </div>
-
-    <div id="chart-container"></div>
+    <canvas id="canvas-graph"></canvas>
 
     <script>
-        let isTradingAuthorized = false;
-        let currentLot = 0.01;
-        let lineSeries;
+        let isActive = false;
+        let points = [];
+        const canvas = document.getElementById('canvas-graph');
+        const ctx = canvas.getContext('2d');
 
-        // --- INITIALISATION DU GRAPHIQUE ---
-        function initChart() {
-            const chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
-                layout: { backgroundColor: '#000000', textColor: '#d1d5db' },
-                grid: { vertLines: { visible: false }, horzLines: { color: '#1e293b' } },
-                timeScale: { visible: false }
-            });
-            lineSeries = chart.addLineSeries({ color: '#3b82f6', lineWidth: 2 });
-            // Simulation initiale pour voir la ligne
-            for(let i=0; i<100; i++) {
-                lineSeries.update({ time: Date.now() + i, value: 1.0850 + (Math.random()*0.001) });
-            }
-        }
-
-        // --- FLUX DE PRIX RÉEL (Yahoo Finance API alternative) ---
-        async function fetchPrice() {
-            try {
-                // On simule un mouvement fluide pour le graphique
-                let fakePrice = 1.08500 + (Math.random() - 0.5) * 0.0002;
-                updateUI(fakePrice);
-            } catch (e) { console.log("Erreur flux"); }
-        }
-
-        function updateUI(price) {
-            const el = document.getElementById('live-price');
-            const oldPrice = parseFloat(el.innerText);
-            el.innerText = price.toFixed(5);
-            el.className = price >= oldPrice ? 'text-5xl font-bold price-up' : 'text-5xl font-bold price-down';
-            if(lineSeries) lineSeries.update({ time: Math.floor(Date.now()/1000), value: price });
-        }
-
-        function toggleTrading() {
-            isTradingAuthorized = !isTradingAuthorized;
-            const btn = document.getElementById('auth-btn');
-            const label = document.getElementById('auth-label');
-            if(isTradingAuthorized) {
-                btn.innerText = "ARRÊTER"; btn.classList.add('trading-on');
-                label.innerText = "Automate: EN SERVICE"; label.style.color = "#ef4444";
-                speak("Robot en service. Trading autorisé.");
+        function toggleBot() {
+            isActive = !isActive;
+            const btn = document.getElementById('main-btn');
+            const status = document.getElementById('status-text');
+            if(isActive) {
+                btn.innerText = "ARRÊTER LE ROBOT"; btn.classList.add('on');
+                status.innerText = "Automate: EN SERVICE"; status.style.color = "#ef4444";
+                speak("Robot en service");
             } else {
-                btn.innerText = "AUTORISER LE TRADING"; btn.classList.remove('trading-on');
-                label.innerText = "Automate: OFF"; label.style.color = "#6b7280";
-                speak("Robot arrêté.");
+                btn.innerText = "ACTIVER LE ROBOT"; btn.classList.remove('on');
+                status.innerText = "Automate: OFF"; status.style.color = "#60a5fa";
+                speak("Robot arrêté");
             }
         }
 
-        function selectLot(n, v) {
-            currentLot = v;
-            document.querySelectorAll('button').forEach(b => b.classList.remove('preset-active'));
-            document.getElementById('l'+n).classList.add('preset-active');
-            speak("Lot réglé à " + v);
+        function setLot(val, el) {
+            document.querySelectorAll('.btn-lot').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            speak("Lot " + val);
         }
 
         function speak(t) {
@@ -111,12 +72,41 @@
             window.speechSynthesis.speak(u);
         }
 
-        window.onload = () => {
-            initChart();
-            selectLot(1, 0.01);
-            setInterval(fetchPrice, 1000);
-            document.body.addEventListener('click', () => { speak(""); }, {once: true});
-        };
+        function update() {
+            // Simulation de prix
+            const oldPrice = parseFloat(document.getElementById('price').innerText) || 1.08500;
+            const newPrice = oldPrice + (Math.random() - 0.5) * 0.00015;
+            
+            // UI
+            const priceEl = document.getElementById('price');
+            priceEl.innerText = newPrice.toFixed(5);
+            priceEl.style.color = newPrice >= oldPrice ? "#00ff00" : "#ff0000";
+            
+            document.getElementById('rsi').innerText = "RSI (14): " + (40 + Math.random() * 20).toFixed(2);
+
+            // Graphique
+            points.push(newPrice);
+            if(points.length > 50) points.shift();
+            drawGraph();
+        }
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "#3b82f6";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const step = canvas.width / 50;
+            points.forEach((p, i) => {
+                const y = canvas.height / 2 + (p - 1.08500) * 5000;
+                if(i === 0) ctx.moveTo(i * step, y);
+                else ctx.lineTo(i * step, y);
+            });
+            ctx.stroke();
+        }
+
+        // Lancement
+        setInterval(update, 1000);
+        window.addEventListener('click', () => { speak(""); }, {once: true});
     </script>
 </body>
 </html>
