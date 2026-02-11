@@ -3,33 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Robot AvaTrade Pro</title>
+    <title>Robot AvaTrade Pro v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #000; color: #fff; font-family: monospace; }
-        .btn-lot { background: #1e293b; border: 1px solid #334155; padding: 15px 5px; border-radius: 8px; font-weight: bold; font-size: 12px; }
-        .active { background: #1e40af !important; border-color: #3b82f6 !important; box-shadow: 0 0 10px #3b82f6; }
-        .btn-auth { background: #374151; width: 100%; padding: 20px; border-radius: 12px; font-weight: 900; margin-bottom: 20px; }
-        .on { background: #b91c1c !important; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        #canvas-graph { background: #0a0a0a; border: 1px solid #1e293b; width: 100%; height: 150px; border-radius: 8px; }
+        body { background: #000; color: #fff; font-family: sans-serif; touch-action: manipulation; }
+        .btn-lot { background: #111827; border: 1px solid #374151; padding: 12px 5px; border-radius: 8px; font-weight: bold; font-size: 11px; }
+        .active { background: #1d4ed8 !important; border-color: #60a5fa !important; box-shadow: 0 0 15px rgba(59,130,246,0.5); }
+        .btn-auth { background: #1f2937; width: 100%; padding: 15px; border-radius: 12px; font-weight: 900; }
+        .on { background: #dc2626 !important; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        canvas { background: #050505; border: 1px solid #111827; width: 100%; height: 160px; border-radius: 8px; }
+        .log-display { background: rgba(30, 58, 138, 0.4); border-left: 4px solid #3b82f6; padding: 8px; font-size: 10px; color: #93c5fd; min-height: 35px; margin-bottom: 10px; }
     </style>
 </head>
 <body class="p-4">
 
-    <div class="flex justify-between text-[10px] text-blue-400 mb-4 uppercase font-bold">
-        <span>Compte 101660280</span>
+    <div class="flex justify-between text-[9px] text-blue-500 mb-2 font-bold uppercase tracking-tighter">
+        <span>Compte: 101660280</span>
         <span id="status-text">Automate: OFF</span>
     </div>
 
-    <button onclick="toggleBot()" id="main-btn" class="btn-auth">ACTIVER LE ROBOT</button>
-
-    <div class="text-center mb-6">
-        <div id="price" class="text-6xl font-black tracking-tighter mb-1 text-gray-400">0.00000</div>
-        <div id="rsi" class="text-xs text-blue-500 font-bold uppercase">RSI (14): calcul...</div>
+    <div id="decision-log" class="log-display">
+        Système prêt. En attente d'autorisation ou de signal...
     </div>
 
-    <div class="grid grid-cols-5 gap-2 mb-6">
+    <button onclick="toggleBot()" id="main-btn" class="btn-auth mb-4">ACTIVER LE SNIPER</button>
+
+    <div class="text-center mb-4">
+        <div id="price" class="text-5xl font-black tracking-tighter text-gray-500">1.08500</div>
+        <div class="flex justify-center gap-4 mt-1">
+            <span id="rsi" class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">RSI (14): --</span>
+            <span class="text-[10px] text-orange-400 font-bold uppercase tracking-widest">Pivot: 1.0842</span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-5 gap-1 mb-4">
         <button onclick="setLot(0.01, this)" class="btn-lot active">0.01</button>
         <button onclick="setLot(0.05, this)" class="btn-lot">0.05</button>
         <button onclick="setLot(0.10, this)" class="btn-lot">0.10</button>
@@ -37,33 +45,42 @@
         <button onclick="setLot(0.50, this)" class="btn-lot">0.50</button>
     </div>
 
-    <canvas id="canvas-graph"></canvas>
+    <canvas id="graph"></canvas>
 
     <script>
         let isActive = false;
-        let points = [];
-        const canvas = document.getElementById('canvas-graph');
+        let prices = [];
+        let currentLot = 0.01;
+        const canvas = document.getElementById('graph');
         const ctx = canvas.getContext('2d');
+
+        function logDecision(msg) {
+            document.getElementById('decision-log').innerText = msg;
+        }
 
         function toggleBot() {
             isActive = !isActive;
             const btn = document.getElementById('main-btn');
             const status = document.getElementById('status-text');
             if(isActive) {
-                btn.innerText = "ARRÊTER LE ROBOT"; btn.classList.add('on');
-                status.innerText = "Automate: EN SERVICE"; status.style.color = "#ef4444";
-                speak("Robot en service");
+                btn.innerText = "DÉSACTIVER SNIPER"; btn.classList.add('on');
+                status.innerText = "Automate: EN SERVICE";
+                logDecision("SNIPER ACTIVÉ : Analyse des flux en cours pour détection Bulle d'eau...");
+                speak("Robot en service. Sniper prêt.");
             } else {
-                btn.innerText = "ACTIVER LE ROBOT"; btn.classList.remove('on');
-                status.innerText = "Automate: OFF"; status.style.color = "#60a5fa";
-                speak("Robot arrêté");
+                btn.innerText = "ACTIVER LE SNIPER"; btn.classList.remove('on');
+                status.innerText = "Automate: OFF";
+                logDecision("SNIPER ARRÊTÉ : Toutes les positions sont protégées.");
+                speak("Robot arrêté.");
             }
         }
 
         function setLot(val, el) {
+            currentLot = val;
             document.querySelectorAll('.btn-lot').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
-            speak("Lot " + val);
+            logDecision("VOLUME MODIFIÉ : " + val + " lot(s) pour la prochaine exécution.");
+            speak("Volume réglé à " + val);
         }
 
         function speak(t) {
@@ -73,38 +90,45 @@
         }
 
         function update() {
-            // Simulation de prix
-            const oldPrice = parseFloat(document.getElementById('price').innerText) || 1.08500;
-            const newPrice = oldPrice + (Math.random() - 0.5) * 0.00015;
+            const el = document.getElementById('price');
+            const oldP = parseFloat(el.innerText);
+            const newP = oldP + (Math.random() - 0.5) * 0.0002;
             
-            // UI
-            const priceEl = document.getElementById('price');
-            priceEl.innerText = newPrice.toFixed(5);
-            priceEl.style.color = newPrice >= oldPrice ? "#00ff00" : "#ff0000";
+            el.innerText = newP.toFixed(5);
+            el.style.color = newP >= oldP ? "#22c55e" : "#ef4444";
             
-            document.getElementById('rsi').innerText = "RSI (14): " + (40 + Math.random() * 20).toFixed(2);
+            let rsiVal = (35 + Math.random()*30).toFixed(2);
+            document.getElementById('rsi').innerText = "RSI (14): " + rsiVal;
 
-            // Graphique
-            points.push(newPrice);
-            if(points.length > 50) points.shift();
+            // Détection fictive de signal pour test visuel
+            if(isActive && Math.random() > 0.98) {
+                logDecision("SIGNAL DÉTECTÉ : Confirmation Bulle d'eau + Signal Crabe sur Pivot.");
+                speak("Confirmation Bulle d'eau détectée");
+            }
+
+            prices.push(newP);
+            if(prices.length > 60) prices.shift();
             drawGraph();
         }
 
         function drawGraph() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = "#3b82f6";
-            ctx.lineWidth = 2;
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            // Lignes de niveaux (R1, Pivot)
+            ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(0, 40); ctx.lineTo(canvas.width, 40); ctx.stroke(); // R1 approx
+            ctx.beginPath(); ctx.moveTo(0, 120); ctx.lineTo(canvas.width, 120); ctx.stroke(); // Pivot approx
+
+            // Ligne de prix
+            ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 3;
             ctx.beginPath();
-            const step = canvas.width / 50;
-            points.forEach((p, i) => {
-                const y = canvas.height / 2 + (p - 1.08500) * 5000;
-                if(i === 0) ctx.moveTo(i * step, y);
-                else ctx.lineTo(i * step, y);
+            prices.forEach((p, i) => {
+                const x = (i / 60) * canvas.width;
+                const y = canvas.height/2 + (p - prices[0]) * 10000;
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
             });
             ctx.stroke();
         }
 
-        // Lancement
         setInterval(update, 1000);
         window.addEventListener('click', () => { speak(""); }, {once: true});
     </script>
