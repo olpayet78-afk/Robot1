@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot AvaTrade Pro - Control System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        .price-up { color: #00ff00; }
+        .price-down { color: #ff0000; }
+        .preset-active { border: 2px solid #3b82f6; background: #1e3a8a !important; }
+        .trading-on { background: #ef4444 !important; animation: pulse-red 2s infinite; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        #chart-container { width: 100%; height: 180px; border-radius: 8px; border: 1px solid #1e293b; margin-top: 10px; }
+    </style>
+</head>
+<body class="bg-black text-white font-mono">
+
+    <div class="p-4 bg-gray-900 border-b-2 border-blue-900 flex justify-between items-center">
+        <div>
+            <div class="text-[10px] text-blue-400 font-bold uppercase">Statut Automate</div>
+            <div id="auth-label" class="text-lg font-black text-gray-500">ARRÊTÉ</div>
+        </div>
+        <button onclick="toggleTrading()" id="auth-btn" class="bg-gray-700 px-6 py-3 rounded-full font-black text-sm transition-all">
+            DONNER L'AUTORISATION
+        </button>
+    </div>
+
+    <div class="p-2 px-4 bg-black border-b border-gray-800 flex justify-between items-center">
+        <div id="status-log" class="text-[10px] text-gray-400 italic">En attente d'activation...</div>
+        <div class="text-[9px] text-blue-500 font-bold uppercase">Compte 101660280</div>
+    </div>
+
+    <div class="py-4 text-center">
+        <div id="live-price" class="text-5xl font-bold tracking-tighter text-gray-600">0.00000</div>
+        <div id="rsi-display" class="text-[10px] text-blue-400 mt-1">RSI (14): --</div>
+    </div>
+
+    <div class="px-3 mb-4">
+        <div class="grid grid-cols-5 gap-2">
+            <button onclick="selectLot(1, 0.01)" id="l1" class="bg-gray-800 py-2 rounded text-[10px] font-bold border border-gray-700">0.01</button>
+            <button onclick="selectLot(2, 0.05)" id="l2" class="bg-gray-800 py-2 rounded text-[10px] font-bold border border-gray-700">0.05</button>
+            <button onclick="selectLot(3, 0.10)" id="l3" class="bg-gray-800 py-2 rounded text-[10px] font-bold border border-gray-700">0.10</button>
+            <button onclick="selectLot(4, 0.25)" id="l4" class="bg-gray-800 py-2 rounded text-[10px] font-bold border border-gray-700">0.25</button>
+            <button onclick="selectLot(5, 0.50)" id="l5" class="bg-gray-800 py-2 rounded text-[10px] font-bold border border-gray-700">0.50</button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 px-3">
+        <div id="ind-liquidite" class="bg-gray-900 p-3 rounded border border-gray-800 text-center transition-all">
+            <div class="text-[10px] text-blue-500 font-bold uppercase">Liquidité</div>
+        </div>
+        <div id="ind-retournement" class="bg-gray-900 p-3 rounded border border-gray-800 text-center transition-all">
+            <div class="text-[10px] text-red-500 font-bold uppercase">Retournement</div>
+        </div>
+    </div>
+
+    <div class="px-3"><div id="chart-container"></div></div>
+
+    <script>
+        let isTradingAuthorized = false;
+        let currentLot = 0.01;
+        let liquiditeDetected = false;
+
+        // --- GESTION AUTORISATION ---
+        function toggleTrading() {
+            isTradingAuthorized = !isTradingAuthorized;
+            const btn = document.getElementById('auth-btn');
+            const label = document.getElementById('auth-label');
+
+            if (isTradingAuthorized) {
+                btn.innerText = "ARRÊTER LE ROBOT";
+                btn.classList.add('trading-on');
+                label.innerText = "EN SERVICE";
+                label.classList.replace('text-gray-500', 'text-red-500');
+                speak("Autorisation accordée. Le robot est en service.");
+            } else {
+                btn.innerText = "DONNER L'AUTORISATION";
+                btn.classList.remove('trading-on');
+                label.innerText = "ARRÊTÉ";
+                label.classList.replace('text-red-500', 'text-gray-500');
+                speak("Robot arrêté. Exécution désactivée.");
+            }
+        }
+
+        function selectLot(num, val) {
+            currentLot = val;
+            document.querySelectorAll('button').forEach(b => b.classList.remove('preset-active'));
+            document.getElementById('l'+num).classList.add('preset-active');
+            speak(`Lot réglé à ${val}`);
+        }
+
+        function speak(t) {
+            const u = new SpeechSynthesisUtterance(t);
+            u.lang = 'fr-FR';
+            window.speechSynthesis.speak(u);
+        }
+
+        // --- MOTEUR TECHNIQUE ---
+        let price = 1.08500;
+        function update() {
+            const change = (Math.random() - 0.5) * 0.0001;
+            price += change;
+            document.getElementById('live-price').innerText = price.toFixed(5);
+            
+            // Simulation d'exécution si autorisé
+            if (isTradingAuthorized && !liquiditeDetected && Math.random() > 0.99) {
+                liquiditeDetected = true;
+                document.getElementById('ind-liquidite').classList.add('bg-blue-900');
+                speak("Liquidité confirmée. Prêt pour position.");
+            }
+        }
+
+        window.onload = () => {
+            selectLot(1, 0.01);
+            setInterval(update, 1000);
+        };
+    </script>
+</body>
+</html>
